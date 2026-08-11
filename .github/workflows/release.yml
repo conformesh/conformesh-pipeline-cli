@@ -88,6 +88,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: conformesh-*
           merge-multiple: true
       - run: sha256sum conformesh-* > SHA256SUMS
       - env:
