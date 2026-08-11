@@ -1,0 +1,4 @@
+interface:
+  display_name: "Integrate Conformesh Pipeline"
+  short_description: "Install Conformesh into a customer CI pipeline"
+  default_prompt: "Use $integrate-conformesh-pipeline to add a safe, pinned Conformesh CRA evidence gate to this repository."

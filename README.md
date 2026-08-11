@@ -10,7 +10,7 @@ It supports GitHub Actions, GitLab CI, Azure Pipelines, Jenkins and generic CI r
 docker run --rm \
   -e CONFORMESH_PIPELINE_TOKEN \
   -v "$PWD:/work" \
-  ghcr.io/conformesh/conformesh-pipeline-cli:latest \
+  ghcr.io/conformesh/conformesh-pipeline-cli:1.0.2 \
   preview --sbom build/sbom.cdx.json
 ```
 
@@ -28,6 +28,18 @@ docker run --rm \
 The gate evaluates the product's current dossier-readiness checklist. It validates the SBOM format and preserves other uploaded artifacts, but it does not certify CRA compliance or replace accountable human review.
 
 See the [full setup guide](https://conformesh.com/how-to) and [API documentation](https://conformesh.com/api/docs).
+
+## Claude and coding-agent skill
+
+The repository includes an agent-readable skill that can inspect a customer repository and install the appropriate pinned integration for GitHub Actions, GitLab CI, Azure Pipelines, Jenkins, or a generic runner.
+
+For Claude Code, copy [`skills/integrate-conformesh-pipeline`](skills/integrate-conformesh-pipeline) into the customer's `.claude/skills/` directory. For Codex, copy it into the applicable `.codex/skills/` directory. Then ask:
+
+```text
+Use $integrate-conformesh-pipeline to add Conformesh to this repository's CI pipeline.
+```
+
+The skill never handles the product token. It modifies only the pipeline configuration and leaves an authorized customer administrator to place `CONFORMESH_PIPELINE_TOKEN` in the provider's protected secret store.
 
 ## Security
 

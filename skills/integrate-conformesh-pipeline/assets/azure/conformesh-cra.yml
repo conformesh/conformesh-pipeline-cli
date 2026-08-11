@@ -1,0 +1,25 @@
+parameters:
+  - {name: mode, type: string, default: preview, values: [preview, publish]}
+  - {name: sbom, type: string, default: build/sbom.cdx.json}
+  - {name: gate, type: string, default: warn, values: [warn, strict]}
+  - {name: language, type: string, default: en}
+steps:
+  - script: |
+      docker run --rm -v "$(Build.SourcesDirectory):/work" \
+        -e CONFORMESH_PIPELINE_TOKEN -e TF_BUILD -e BUILD_REPOSITORY_NAME \
+        -e BUILD_SOURCEVERSION -e BUILD_BUILDID -e BUILD_SOURCEBRANCHNAME \
+        -e SYSTEM_COLLECTIONURI -e SYSTEM_TEAMPROJECT \
+        ghcr.io/conformesh/conformesh-pipeline-cli:1.0.2 \
+        ${{ parameters.mode }} --sbom "${{ parameters.sbom }}" \
+        --gate "${{ parameters.gate }}" --language "${{ parameters.language }}" \
+        --output conformesh-output \
+        ${CONFORMESH_RELEASE_KEY:+--release-key "$CONFORMESH_RELEASE_KEY"} \
+        ${CONFORMESH_VERSION:+--version "$CONFORMESH_VERSION"}
+    displayName: Conformesh CRA evidence
+    env:
+      CONFORMESH_PIPELINE_TOKEN: $(CONFORMESH_PIPELINE_TOKEN)
+      CONFORMESH_RELEASE_KEY: $(CONFORMESH_RELEASE_KEY)
+      CONFORMESH_VERSION: $(CONFORMESH_VERSION)
+  - task: PublishPipelineArtifact@1
+    condition: always()
+    inputs: {targetPath: conformesh-output, artifact: conformesh-cra}

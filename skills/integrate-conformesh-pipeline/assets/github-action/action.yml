@@ -1,0 +1,34 @@
+name: Conformesh CRA build evidence
+description: Validate or publish build evidence and produce a CRA readiness report
+inputs:
+  mode: {description: preview or publish, required: false, default: preview}
+  sbom: {description: Path to CycloneDX or SPDX SBOM, required: true}
+  release_key: {description: Immutable release key for publish mode, required: false}
+  version: {description: Release version for publish mode, required: false}
+  gate: {description: warn or strict, required: false, default: warn}
+  language: {description: Report language, required: false, default: en}
+  api_url: {description: Conformesh API origin, required: false, default: 'https://conformesh.com'}
+runs:
+  using: composite
+  steps:
+    - name: Run Conformesh CRA automation
+      shell: bash
+      env:
+        CONFORMESH_MODE: ${{ inputs.mode }}
+        CONFORMESH_SBOM: ${{ inputs.sbom }}
+        CONFORMESH_RELEASE_KEY: ${{ inputs.release_key }}
+        CONFORMESH_VERSION: ${{ inputs.version }}
+        CONFORMESH_GATE: ${{ inputs.gate }}
+        CONFORMESH_LANGUAGE: ${{ inputs.language }}
+        CONFORMESH_API_URL: ${{ inputs.api_url }}
+      run: |
+        args=("$CONFORMESH_MODE" --sbom "/workspace/$CONFORMESH_SBOM" --gate "$CONFORMESH_GATE" --language "$CONFORMESH_LANGUAGE")
+        if [[ "$CONFORMESH_MODE" == "publish" ]]; then
+          args+=(--release-key "$CONFORMESH_RELEASE_KEY" --version "$CONFORMESH_VERSION")
+        fi
+        docker run --rm -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
+          -e CONFORMESH_PIPELINE_TOKEN -e CONFORMESH_API_URL -e GITHUB_ACTIONS \
+          -e GITHUB_REPOSITORY -e GITHUB_SHA -e GITHUB_RUN_ID -e GITHUB_REF_NAME \
+          -e GITHUB_SERVER_URL \
+          ghcr.io/conformesh/conformesh-pipeline-cli:1.0.2 "${args[@]}"
+branding: {icon: shield, color: green}

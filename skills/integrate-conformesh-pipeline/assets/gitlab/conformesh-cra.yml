@@ -1,0 +1,23 @@
+spec:
+  inputs:
+    mode: {default: preview, options: [preview, publish]}
+    sbom: {default: build/sbom.cdx.json}
+    gate: {default: warn, options: [warn, strict]}
+    language: {default: en}
+---
+conformesh-cra:
+  image:
+    name: ghcr.io/conformesh/conformesh-pipeline-cli:1.0.2
+    entrypoint: [""]
+  script:
+    - >-
+      conformesh "$[[ inputs.mode ]]" --sbom "$[[ inputs.sbom ]]"
+      --gate "$[[ inputs.gate ]]" --language "$[[ inputs.language ]]"
+      --output conformesh-output
+      ${CONFORMESH_RELEASE_KEY:+--release-key "$CONFORMESH_RELEASE_KEY"}
+      ${CONFORMESH_VERSION:+--version "$CONFORMESH_VERSION"}
+  artifacts:
+    when: always
+    paths: [conformesh-output/]
+    reports:
+      dotenv: conformesh-output/conformesh.env
