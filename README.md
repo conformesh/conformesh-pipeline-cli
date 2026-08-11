@@ -1,0 +1,38 @@
+# Conformesh pipeline CLI
+
+The Conformesh pipeline CLI uploads build evidence to a product-scoped Conformesh account and returns a CRA dossier-readiness result for the build.
+
+It supports GitHub Actions, GitLab CI, Azure Pipelines, Jenkins and generic CI runners. The image contains no customer or Conformesh credentials. Supply the product-bound `CONFORMESH_PIPELINE_TOKEN` through the CI provider's secret store at runtime.
+
+## Container usage
+
+```sh
+docker run --rm \
+  -e CONFORMESH_PIPELINE_TOKEN \
+  -v "$PWD:/work" \
+  ghcr.io/conformesh/conformesh-pipeline-cli:latest \
+  preview --sbom build/sbom.cdx.json
+```
+
+For release builds, pin a semantic version or image digest rather than `latest`.
+
+```sh
+docker run --rm \
+  -e CONFORMESH_PIPELINE_TOKEN \
+  -v "$PWD:/work" \
+  ghcr.io/conformesh/conformesh-pipeline-cli:1.0.0 \
+  publish --sbom build/sbom.cdx.json \
+  --release-key "gateway@$VERSION" --version "$VERSION"
+```
+
+The gate evaluates the product's current dossier-readiness checklist. It validates the SBOM format and preserves other uploaded artifacts, but it does not certify CRA compliance or replace accountable human review.
+
+See the [full setup guide](https://conformesh.com/how-to) and [API documentation](https://conformesh.com/api/docs).
+
+## Security
+
+The CLI uses the Python standard library and reads its token only from `CONFORMESH_PIPELINE_TOKEN`. It refuses non-HTTPS API URLs except localhost and rejects HTTP redirects so credentials are not forwarded to another origin.
+
+Report security issues privately to security@conformesh.com.
+
+Copyright 2026 Conformesh. All rights reserved. No licence is granted for redistribution or modification of the source code beyond use of the published CLI and container with the Conformesh service.
