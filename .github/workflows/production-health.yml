@@ -1,0 +1,52 @@
+name: Conformesh production health
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: conformesh-production-health
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API and supervised operations
+        id: health
+        continue-on-error: true
+        run: |
+          curl --fail --silent --show-error --retry 2 --retry-all-errors --max-time 20 https://conformesh.com/health/ready
+          curl --fail --silent --show-error --retry 2 --retry-all-errors --max-time 20 https://conformesh.com/health/operations
+
+      - name: Open or update incident
+        if: steps.health.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          issue_number="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label production-health --json number --jq '.[0].number // empty')"
+          body="The external production health check failed at ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. This checks both API readiness and fresh database heartbeats from the scheduler and durable worker."
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh label create production-health --repo "$GITHUB_REPOSITORY" --color D73A4A --description "Production health alert" --force
+            gh issue create --repo "$GITHUB_REPOSITORY" --label production-health --title "Conformesh production health check failed" --body "$body"
+          fi
+
+      - name: Close recovered incident
+        if: steps.health.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue list --repo "$GITHUB_REPOSITORY" --state open --label production-health --json number --jq '.[].number' | while read -r issue_number; do
+            gh issue close "$issue_number" --repo "$GITHUB_REPOSITORY" --comment "Production readiness and supervised-service heartbeats have recovered: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          done
+
+      - name: Fail the workflow when unhealthy
+        if: steps.health.outcome == 'failure'
+        run: exit 1

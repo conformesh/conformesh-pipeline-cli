@@ -20,7 +20,7 @@ For release builds, pin a semantic version or image digest rather than `latest`.
 docker run --rm \
   -e CONFORMESH_PIPELINE_TOKEN \
   -v "$PWD:/work" \
-  ghcr.io/conformesh/conformesh-pipeline-cli:1.0.0 \
+  ghcr.io/conformesh/conformesh-pipeline-cli:1.0.2 \
   publish --sbom build/sbom.cdx.json \
   --release-key "gateway@$VERSION" --version "$VERSION"
 ```
