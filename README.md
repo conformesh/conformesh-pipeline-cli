@@ -27,6 +27,10 @@ docker run --rm \
 
 The gate evaluates the product's current dossier-readiness checklist. It validates the SBOM format and preserves other uploaded artifacts, but it does not certify CRA compliance or replace accountable human review.
 
+## This repository uses Conformesh
+
+Every push and pull request tests the CLI, builds and smoke-tests its container, and generates a CycloneDX SBOM. Pushes to `main` then use a product-scoped GitHub Actions secret to submit that evidence back to Conformesh in preview mode. Pull requests never receive the credential. The resulting CRA readiness report and evidence snapshot are retained as workflow artifacts.
+
 See the [full setup guide](https://conformesh.com/how-to) and [API documentation](https://conformesh.com/api/docs).
 
 ## Claude and coding-agent skill

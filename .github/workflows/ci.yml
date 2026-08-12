@@ -1,0 +1,79 @@
+name: Build and dogfood
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test CLI
+        run: python -m unittest -v test_pipeline_cli.py
+      - name: Build container
+        run: docker build --tag conformesh-pipeline-cli:${GITHUB_SHA} .
+      - name: Smoke-test container
+        run: docker run --rm conformesh-pipeline-cli:${GITHUB_SHA} --help
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: conformesh-pipeline-cli.cdx.json
+          upload-artifact: false
+      - name: Record build provenance
+        run: |
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg commit "$GITHUB_SHA" \
+            --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{predicateType:"https://slsa.dev/provenance/v1",subject:[{name:$repository,digest:{gitCommit:$commit}}],runDetails:{builder:{id:"github-actions"},metadata:{invocationId:$run}}}' \
+            > conformesh-provenance.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-build-evidence
+          path: |
+            conformesh-pipeline-cli.cdx.json
+            conformesh-provenance.json
+          retention-days: 14
+
+  conformesh-dogfood:
+    if: github.event_name != 'pull_request'
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    env:
+      CONFORMESH_PIPELINE_TOKEN: ${{ secrets.CONFORMESH_PIPELINE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cli-build-evidence
+      - name: Require configured Conformesh credential
+        run: test -n "$CONFORMESH_PIPELINE_TOKEN"
+      - name: Submit CLI evidence to Conformesh
+        run: |
+          python conformesh_spike/pipeline_cli.py preview \
+            --sbom conformesh-pipeline-cli.cdx.json \
+            --artifact provenance=conformesh-provenance.json \
+            --gate warn \
+            --output conformesh-output
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: conformesh-evaluation
+          path: conformesh-output/
+          if-no-files-found: ignore
+          retention-days: 30
