@@ -65,9 +65,12 @@ jobs:
         run: test -n "$CONFORMESH_PIPELINE_TOKEN"
       - name: Submit CLI evidence to Conformesh
         run: |
-          python conformesh_spike/pipeline_cli.py preview \
+          python conformesh_spike/pipeline_cli.py publish \
             --sbom conformesh-pipeline-cli.cdx.json \
             --artifact provenance=conformesh-provenance.json \
+            --release-key conformesh-pipeline-cli@1.0.2 \
+            --version 1.0.2 \
+            --release-date "$(date -u +%F)" \
             --gate warn \
             --output conformesh-output
       - uses: actions/upload-artifact@v4
